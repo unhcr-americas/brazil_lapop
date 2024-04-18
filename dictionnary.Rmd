@@ -1,0 +1,64 @@
+---
+title: "LAPOP - Americas Barometer"
+subtitle: "Brazil"
+date: "2023"
+output:
+  unhcrdown::html_page:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+
+https://www.vanderbilt.edu/lapop/raw-data.php
+
+
+
+## Introduction
+
+:::{.lead}
+
+:::
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.cap = TRUE, message = FALSE, warning = FALSE, fig.height = 8, fig.width = 9) 
+```
+
+```{r library}
+library(officedown)
+library(unhcrthemes)
+library(fontawesome)
+library(haven)
+library(dplyr)
+library(scales)
+library(tidyverse)
+library(sjPlot)
+
+# turn off the automatic use of showtext functionality, so that the dml function can works properly
+showtext::showtext_auto(FALSE)
+
+fulldata <- read_sav(here::here("data-raw",
+                            "BRA_merge_2007-2023_LAPOP_AmericasBarometer_v1.0_w.sav"))
+
+
+## Add variable pop to crosstab all the content... 
+# fulldata <- fulldata |>
+#   dplyr::mutate(pop = dplyr::case_when(
+#     r1b == 3 & 
+#       r1b_pais_esp_cod == 513  ~ "Venezolanos",
+#     r1b== 1 | r1b == 2  ~ "Chilenos",
+#     TRUE ~ "Otros"))
+# 
+cross <- c("comcon3xa")
+crosslab <- "Opinión del vecino venezolano"
+
+## Reference #####
+# https://martinctc.github.io/blog/working-with-spss-labels-in-r/
+
+```
+
+```{r}
+## Explore all content
+fulldata |>  sjPlot::view_df()
+```
+

@@ -1,0 +1,230 @@
+---
+title: "LAPOP - Americas Barometer"
+subtitle: "Brazil"
+date: "2023"
+output:
+  unhcrdown::html_page:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+
+
+
+
+## Introduction
+
+:::{.lead}
+
+https://www.vanderbilt.edu/lapop/raw-data.php
+:::
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.cap = TRUE, message = FALSE, warning = FALSE, fig.height = 8, fig.width = 9) 
+```
+
+```{r library}
+library(officedown)
+library(unhcrthemes)
+library(fontawesome)
+library(haven)
+library(dplyr)
+library(scales)
+library(tidyverse)
+library(sjPlot)
+
+# turn off the automatic use of showtext functionality, so that the dml function can works properly
+showtext::showtext_auto(FALSE)
+
+fulldata <- read_sav(here::here("data-raw",
+                            "BRA_merge_2007-2023_LAPOP_AmericasBarometer_v1.0_w.sav"))
+```
+
+```{r}
+
+## Check in which wve we have tje question on ""How much would it bother you to have a Venezuelan as a neighbor? "
+#table(fulldata$wave, fulldata$comcon3xa, useNA = "ifany")
+```
+
+
+```{r }
+## Add variable  to crosstab all the content... 
+fulldata2 <- fulldata |>
+  dplyr::mutate(cross = paste0(wave,"_", comcon3xa)) |>
+  dplyr::filter( wave %in% c(2018, 2023))|>
+  dplyr::filter( wave %in% c(2018, 2023)) |>
+  dplyr::mutate( cross = dplyr::recode(cross,
+                                       "2018_1"="A lot bothered to have a Venezuelan as a neighbor (2018)",
+                                       "2018_2"="Somehow bothered to have a Venezuelan as a neighbor (2018)",
+                                       "2018_3"="A little bothered to have a Venezuelan as a neighbor (2018)", 
+                                       "2018_4"="Not at all bothered to have a Venezuelan as a neighbor (2018)",
+                                       "2018_NA"="As of 2018", 
+                                       "2023_1"="A lot bothered to have a Venezuelan as a neighbor (2023)", 
+                                       "2023_2"="Somehow bothered to have a Venezuelan as a neighbor (2023)",
+                                       "2023_3"="A little bothered to have a Venezuelan as a neighbor (2023)",
+                                       "2023_4" ="Not at all bothered to have a Venezuelan as a neighbor (2023)",
+                                       "2023_NA"="As of 2023" ))
+# 
+cross <- c("cross")
+crosslab <- "How much would it bother you to have a Venezuelan as a neighbor? "
+
+## Reference #####
+# https://martinctc.github.io/blog/working-with-spss-labels-in-r/
+
+```
+
+```{r}
+## Explore all content
+#fulldata |>  sjPlot::view_df()
+```
+
+
+
+
+    
+```{r function-plot_indic}
+#' plot_indic
+#' 
+#' Plotting functions to display indicators
+#' 
+#' @param indic the binary indicator vector
+#' @param cross the crosstab variable vector
+#' @param weight the weight vector
+#' 
+#' @import ggplot2
+#' @import sjPlot
+#' @import sjlabelled
+#' @import unhcrthemes
+#' @return a ggplot2 object
+#' 
+
+plot_indic <- function(indic, cross, weight){
+  
+  p <- sjPlot::plot_xtab(x= indic,
+                  grp = cross,
+                  type = "bar",
+                  weight.by = weight,
+                  # bar.pos = "stack",
+                  # sort.frq =  "asc",
+                  #show.ci = TRUE,
+                  # wrap.labels = 40,
+                  show.total = FALSE,
+                  show.summary = FALSE,
+                  show.prc = FALSE,
+                  # summary.pos = "r",
+                  coord.flip = TRUE) + 
+  ## and the chart labels
+  labs(title =  sjlabelled::get_label(indic),
+       subtitle = paste0("By ",sjlabelled::get_label(cross) ),
+       x = "",
+       y = "",
+       caption = "Source: LAPOP - Americas Barometer- Brazil -vanderbilt.edu"
+      ) +
+  ## Add UNHCR Theme
+  unhcrthemes::theme_unhcr(font_size = 12,
+                           # grid = "Y", axis = "X", axis_title = "y"
+                           grid = "X",  axis = "Y",  axis_title = "X"
+  ) 
+  return(p)  
+}
+```
+
+
+ 
+```{r }
+
+data <- fulldata2 |>
+        dplyr::select(wave, wt, cross, estratopri, estratosec, 	prov, 	tamano,  q1tc_r, q2,
+                    	a4 , aoj17,  
+                      q10d, # 	La situación económica familiar 
+                      q10a1, # 	Para que se usa o dinheiro das remessas? 
+                      q10b, # 	Dependencia del hogar de las remesas 
+                      q10new_18, # 	Ingreso mensual del hogar 
+                      brawrs1, brawrs2, brawrs3,  ## Bolsa
+                      comcon3xa, comcon3xb, comcon3xc, # 	Opinión del vecino venezolano  
+                      immig1 ,
+                     immig1xa , immig1xb , immig1xc, 	
+                     immig2,  #	Los extranjeros quitan trabajo a los ciudadanos o hacen trabajos no deseados 
+                      for1,for1n,for2,for4,for5 # 	País con más influencia en la región 
+                      )
+
+
+# retrieve value and variable labels
+#data.var <- sjlabelled::get_label(data)
+data.val <-sjlabelled::get_labels(data)
+weight <- as.vector(data$wt)
+
+
+for (i in 3:ncol(data)) {
+  # i <- 3
+  var <- names(data)[i]
+  varlab <- sjlabelled::get_label(data[i])
+  type <- ifelse(lengths(data.val[i]) > 0, 
+                 paste0(" -- Categoric Variable"), 
+                 paste0(" -- Numeric Variable"))
+  #cat(paste0(i, "-", var, "-" ,varlab,"-" ,type,"\n\n"))
+  t <- as.data.frame(table(data[ , i] ))
+  if(nrow(t)>1 ) {
+    ## test if it is numeric or categoric variable
+    if(lengths(data.val[i]) > 0) {
+      # if(nrow(t)< 8) {
+      p <-   sjPlot::plot_xtab(x= data[[i]],
+                               grp = data[[cross]],
+                               type = "bar",
+                               weight.by = weight,
+                               # bar.pos = "stack",
+                             #  sort.frq =  "asc",
+                             #  show.ci = TRUE,
+                               wrap.labels = 40,
+                               show.total = FALSE,
+                               show.summary = FALSE,
+                               show.prc = FALSE,
+                               summary.pos = "r",
+                               coord.flip = TRUE) +
+        
+        unhcrthemes::theme_unhcr(font_size = 12,
+                                # grid = "Y", axis = "X", axis_title = "y"
+                                  grid = "X",  axis = "Y",  axis_title = "X"
+                                 ) + 
+        ## and the chart labels
+        labs(title = stringr::str_wrap(paste0(varlab) , 70),
+             subtitle = paste0("Cruzado con ", crosslab),
+             x = "",
+             y = "",
+             caption = "Source: LAPOP - Americas Barometer- Brazil -vanderbilt.edu")
+    } else {
+      
+      
+      ## Print an histogram
+      p <-   sjPlot::plot_grpfrq(var.cnt = data[[i]],
+                                 var.grp = data[[cross]],
+                                 type = "bar",
+                                 weight.by = weight,
+                                 # sort.frq =  "asc",
+                                 # bar.pos = "stack",
+                                 wrap.labels = 40,
+                                 show.summary = FALSE,
+                                 show.prc = FALSE,
+                                 show.values = FALSE,
+                                 show.n = FALSE) +
+        
+        unhcrthemes::theme_unhcr(font_size = 12,
+                                 grid = "Y", 
+                                 axis = "X", 
+                                 axis_title = FALSE) + 
+        ## and the chart labels
+        labs(title = stringr::str_wrap(paste0(varlab) , 70),
+             subtitle = paste0("Cruzado con ",crosslab),
+             x = "",
+             y = "",
+             caption = "Source: LAPOP - Americas Barometer- Brazil -vanderbilt.edu")
+    }
+    print(p)
+    #ggsave( paste0("plot/",cross," - ", i, "-",var, ".png"),  plot =  p, device = "png", width = 24, height = 16, units = "cm")
+  } else {
+    cat(paste0("Un solo valor para ", var, "\n"))
+  }
+}
+
+```
